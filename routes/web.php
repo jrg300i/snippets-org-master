@@ -25,7 +25,8 @@ Route::middleware(['auth'])->group(function () {
     // Ruta para backup (AGREGAR ESTA LÍNEA)
 
 
-    Route::post('/profile/backup', [ProfileController::class, 'backup'])->name('profile.backup');
+    
+    Route::post('/profile/backup', [ProfileController::class, 'backup'])->name('profile.backup.create');
     Route::get('/profile/stats', [ProfileController::class, 'stats'])->name('profile.stats');
 
 
