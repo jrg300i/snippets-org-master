@@ -8,7 +8,7 @@ use App\Http\Controllers\SnippetController;
 use App\Http\Controllers\StatsController;
 
 Route::get('/', function () {
-    return view('home');
+    return view('auth.login');
 });
 
 Auth::routes();
