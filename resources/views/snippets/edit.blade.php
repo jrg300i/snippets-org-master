@@ -175,7 +175,12 @@
                                     @error('language_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <div class="form-text">Opcional. Selecciona el lenguaje para resaltado de sintaxis.</div>
+                                    <div class="form-text">
+                                        Opcional. Selecciona el lenguaje para resaltado de sintaxis.
+                                        <a href="{{ route('languages.create') }}" class="text-decoration-none d-inline-flex align-items-center">
+                                            <i class="fas fa-plus-circle me-1"></i>Crear nuevo lenguaje
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Etiquetas -->

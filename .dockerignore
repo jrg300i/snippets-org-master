@@ -17,6 +17,7 @@ database/*.sqlite
 *.log
 Dockerfile
 docker-compose.yml
+docker-up.sh
 .dockerignore
 reglas.md
 ultimosCambios.md

@@ -104,6 +104,9 @@
                                     @enderror
                                     <div class="form-text">
                                         Opcional. Asigna un lenguaje para el resaltado de sintaxis.
+                                        <a href="{{ route('languages.create') }}" class="text-decoration-none d-inline-flex align-items-center">
+                                            <i class="fas fa-plus-circle me-1"></i>Crear nuevo lenguaje
+                                        </a>
                                     </div>
                                 </div>
 

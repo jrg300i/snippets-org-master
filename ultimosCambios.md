@@ -4,6 +4,37 @@
 
 ---
 
+## v1.8.0 — 2026-09-16 — 6 buenas prácticas de código en reglas.md
+
+### Descripción general
+- Nueva sección **21. Buenas prácticas de código: 6 reglas de calidad** en `reglas.md`, tomando las buenas prácticas aplicadas en banca y generalizándolas a todo el proyecto:
+  1. Patrón de diseño (POM / capas) — separar lógica de estructura de UI.
+  2. Pruebas atómicas e independientes (cada test corre solo).
+  3. Aserciones claras y específicas (qué exactamente y por qué).
+  4. Versionado del código + convención de commits (+ `ultimosCambios.md`).
+  5. Principio DRY (extraer servicios, scopes, Form Requests, componentes).
+  6. Integración en pipelines CI/CD (test + build Docker en cada push).
+- Ejemplos adaptados al stack del proyecto (Laravel, PHPUnit/Pest, Docker/GitHub Actions).
+
+### Archivos
+- `reglas.md` — sección 21 añadida + índice actualizado.
+- `ultimosCambios.md` — este registro.
+
+---
+
+## v1.7.0 — 2026-09-16 — Regla general de despliegue Docker en reglas.md
+
+### Descripción general
+- Nueva sección **20. Despliegue en Docker (generalizado)** en `reglas.md`: cómo dockerizar cualquier aplicación Laravel en un comando (imagen app + BD en contenedor separado + red compartida).
+- Incluye, de forma generalizada: Dockerfile por capas (PHP-FPM + pgsql + nginx + supervisor + composer), `docker-compose.yml`, `docker/entrypoint.sh` (caches + migraciones + supervisord), `docker-up.sh` (CLI puro, sin `docker compose`), tabla de variables de entorno esenciales, verificación post-despliegue y reglas de oro.
+- Traps documentados: `route:cache` falla con closures (→ convertir a controladores), `DB_HOST` debe ser el nombre del contenedor (nunca localhost), PostgreSQL obligatorio con jsonb/GIN/to_tsvector, seed demo solo una vez a mano.
+
+### Archivos
+- `reglas.md` — sección 20 añadida + índice y nota resumen actualizados.
+- `ultimosCambios.md` — este registro.
+
+---
+
 ## v1.6.0 — 2026-09-15 — Publicar colección = publicar todos sus snippets
 
 ### Descripción general

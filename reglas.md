@@ -27,6 +27,8 @@
 17. [CSS Flexbox — Reglas de uso](#17-css-flexbox--reglas-de-uso)
 18. [Navegación: botones Cancelar y Volver](#18-navegación-botones-cancelar-y-volver)
 19. [Auditoría de acciones de usuarios](#19-auditoría-de-acciones-de-usuarios)
+20. [Despliegue en Docker (generalizado)](#20-despliegue-en-docker-generalizado)
+21. [Buenas prácticas de código: 6 reglas de calidad](#21-buenas-prácticas-de-código-6-reglas-de-calidad)
 
 ---
 
@@ -392,7 +394,7 @@ Los túneles **quick trycloudflare son GRATUITOS pero NO tienen garantía de upt
 
 ---
 
-> **Importante:** estas reglas son la base para construir **cualquier proyecto Laravel eficiente** y se pueden reutilizar como plantilla. Mantener consistencia en MVC, migraciones (I-P-R-A-T + índices), seeders, servicios, vistas semánticas, paleta de colores, SOLID, TypeScript, rendimiento y el arranque con cloudflared.
+> **Importante:** estas reglas son la base para construir **cualquier proyecto Laravel eficiente** y se pueden reutilizar como plantilla. Mantener consistencia en MVC, migraciones (I-P-R-A-T + índices), seeders, servicios, vistas semánticas, paleta de colores, SOLID, TypeScript, rendimiento, el arranque con cloudflared y el despliegue con Docker (ver sección 20).
 
 ---
 
@@ -973,3 +975,345 @@ Cada acción relevante (crear, leer, editar, eliminar, emitir/cancelar, iniciar/
 - Página `auditorias/index` (solo admin) con eventos ordenados por fecha descendente.
 - Filtros: usuario, acción, entidad, IP y rango de fechas.
 - Mostrar claramente: fecha/hora, usuario, acción, entidad + ID, IP y descripción.
+
+---
+
+## 20. Despliegue en Docker (generalizado)
+
+> **Regla obligatoria:** TODA aplicación del entorno **debe poder desplegarse con Docker** en un comando. Esta sección define la manera generalizada: la imagen de la app y su base de datos son **contenedores separados** que se comunican por una **red Docker**. Aplica a cualquier proyecto Laravel (u otro framework) cambiando el nombre de la imagen, los contenedores y las variables de entorno.
+
+### 20.1 Objetivo
+
+Que la aplicación funcione en **cualquier máquina** sin instalar PHP, Composer, Nginx ni la base de datos en el host: solo hace falta Docker. Artefactos del proyecto:
+
+| Archivo | Propósito |
+|---------|-----------|
+| `Dockerfile` | Construye la imagen de la app (código + PHP + Nginx + supervisor) |
+| `docker-compose.yml` | Orquesta app + base de datos (si hay `docker compose`) |
+| `docker-up.sh` | Sube todo en **un comando** con el CLI puro de Docker |
+| `docker/entrypoint.sh` | Comandos al arrancar el contenedor (caches + migraciones + process manager) |
+| `docker/default.conf` | Configuración de Nginx (front controller de Laravel) |
+| `docker/supervisord.conf` | Mantiene vivos nginx + php-fpm dentro del mismo contenedor |
+
+### 20.2 Concepto clave: imagen + BD + red
+
+Docker aísla la app y la base de datos. NO se conectan por `localhost` (cada contenedor tiene su propio localhost); se conectan por el **nombre del contenedor** a través de una **red compartida**:
+
+```
+[docker network: app-net]
+  [db-container]  PostgreSQL  ←— DB_HOST=db-container —→  [app-container] nginx+PHP+app :80
+```
+
+- `-p 8080:80` expone SOLO el puerto 80 del contenedor de la app al host.
+- La BD **no se expone** al host (solo red interna), salvo que se necesite un cliente local externo.
+
+### 20.3 Dockerfile generalizado (por capas)
+
+```dockerfile
+FROM php:8.4-fpm
+
+# 1. Dependencias del sistema: git/zip/unzip (composer), libpq-dev (driver pgsql),
+#    nginx (servidor web), supervisor (mantener 2 procesos vivos)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git zip unzip libpq-dev libzip-dev nginx supervisor curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Extensiones PHP que TU app necesite (pgsql, zip, etc.).
+#    ⚠️ Si la app usa PostgreSQL (jsonb/GIN/to_tsvector) es OBLIGATORIO pdo_pgsql;
+#    SQLite no soporta esas features y fallará al migrar.
+RUN docker-php-ext-install pdo_pgsql pgsql zip
+
+# 3. Composer desde su imagen oficial (no instalarlo con curl)
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# 4. Código de la aplicación
+WORKDIR /var/www/html
+COPY . .
+
+# 5. Config por defecto SIN secretos (las env vars del proveedor prevalecen sobre este)
+RUN cp .env.example .env
+
+# 6. Dependencias de producción (--no-dev: sin sail, pint, pail...)
+RUN composer install --no-dev --optimize-autoloader \
+    && php artisan key:generate --force
+
+# 7. Permisos: los procesos web escriben en storage/ y bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache \
+    && mkdir -p /run/php \
+    && chown www-data:www-data /run/php
+
+# 8. Configuración interna del contenedor (nginx, php-fpm, supervisor, entrypoint)
+COPY docker/default.conf /etc/nginx/sites-available/default
+COPY docker/phpfpm.conf /usr/local/etc/php-fpm.d/zz-app.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 80
+CMD ["/usr/local/bin/entrypoint.sh"]
+```
+
+> **Nota PHP-FPM:** la imagen oficial `php:*-fpm` hace que php-fpm escuche en TCP 9000; para que lo haga por **socket** (rápido y estándar con Nginx), crear `docker/phpfpm.conf`:
+>
+> ```ini
+> [www]
+> listen = /run/php/php8.4-fpm.sock
+> ```
+> y copiarlo como `zz-*.conf` (se carga después que la config por defecto de la imagen).
+
+### 20.4 `docker-compose.yml` generalizado
+
+```yaml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8080
+      APP_KEY: ${APP_KEY:-base64:cambialo==}
+      DB_CONNECTION: pgsql
+      DB_HOST: db            # ⚠️ nombre del servicio BD, NO localhost
+      DB_PORT: "5432"
+      DB_DATABASE: app_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: changeme
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+    ports:
+      - "8080:80"
+    volumes:
+      - ./storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "changeme"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
+```
+
+### 20.5 `docker/entrypoint.sh` generalizado
+
+El contenedor NO usa `php artisan serve`; el entrypoint cachea config/rutas/vistas, aplica migraciones y deja a supervisord manteniendo nginx + php-fpm:
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+echo "==> Caching configuration"
+php artisan config:cache
+php artisan event:cache
+php artisan route:cache
+php artisan view:cache
+
+echo "==> Running migrations"
+php artisan migrate --force
+
+echo "==> Starting supervisord"
+exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+```
+
+> **⚠️ `route:cache` falla con closures:** si `routes/web.php` o `routes/api.php` tienen rutas definidas con `Closure` (ej. `Route::get('/', fn() => view(...))`), `route:cache` lanza error y el contenedor NO arranca. Convertir TODAS las rutas a **controladores** antes de dockerizar.
+
+### 20.6 `docker-up.sh`: todo en un comando (CLI puro)
+
+Para máquinas sin `docker compose` (ni plugin, ni `docker-compose`). Generalizado:
+
+```bash
+#!/usr/bin/env bash
+set -e
+
+IMAGE="tu-app"
+NETWORK="app-net"
+DB_NAME="app_db"
+DB_USER="postgres"
+DB_PASS="changeme"
+APP_PORT="8080"
+DB_CONTAINER="app-db"
+APP_CONTAINER="app"
+
+echo "==> 1) Red Docker (la app y la BD se hablan entre sí)"
+docker network create "$NETWORK" 2>/dev/null || true
+
+echo "==> 2) Contenedor PostgreSQL (la base de datos)"
+if ! docker ps --format '{{.Names}}' | grep -q "^$DB_CONTAINER$"; then
+    docker rm -f "$DB_CONTAINER" >/dev/null 2>&1 || true
+    docker run -d --name "$DB_CONTAINER" --network "$NETWORK" \
+        -e POSTGRES_DB="$DB_NAME" \
+        -e POSTGRES_USER="$DB_USER" \
+        -e POSTGRES_PASSWORD="$DB_PASS" \
+        postgres:16 >/dev/null
+    echo "    Base de datos arrancando... (esperando que esté lista)"
+    sleep 6
+else
+    echo "    $DB_CONTAINER ya está corriendo."
+fi
+
+echo "==> 3) Construir la imagen de la app (Dockerfile)"
+docker build -t "$IMAGE" .
+
+echo "==> 4) Contenedor de la app (nginx + PHP + Laravel)"
+docker rm -f "$APP_CONTAINER" >/dev/null 2>&1 || true
+docker run -d --name "$APP_CONTAINER" --network "$NETWORK" -p "$APP_PORT:80" \
+    -e APP_ENV=local \
+    -e APP_DEBUG=true \
+    -e APP_URL="http://localhost:$APP_PORT" \
+    -e DB_CONNECTION=pgsql \
+    -e DB_HOST="$DB_CONTAINER" \
+    -e DB_PORT=5432 \
+    -e DB_DATABASE="$DB_NAME" \
+    -e DB_USERNAME="$DB_USER" \
+    -e DB_PASSWORD="$DB_PASS" \
+    -e SESSION_DRIVER=database \
+    -e CACHE_STORE=database \
+    -e QUEUE_CONNECTION=sync \
+    "$IMAGE" >/dev/null
+
+echo ""
+echo "✔ Listo. Tu app está en: http://localhost:$APP_PORT"
+echo "  - Las migraciones corren solas al arrancar."
+echo "  - Revisa los logs con: docker logs -f $APP_CONTAINER"
+echo "  - Para datos demo (opcional, UNA vez):"
+echo "      docker exec $APP_CONTAINER php artisan db:seed --force"
+echo ""
+echo "  Detener:   docker stop $APP_CONTAINER $DB_CONTAINER"
+echo "  Borrar:    docker rm -f $APP_CONTAINER $DB_CONTAINER && docker network rm $NETWORK"
+```
+
+Reglas del script:
+- **Idempotente:** puede ejecutarse repetidas veces sin romper; la BD se reutiliza y el dato se conserva en el volumen.
+- Si existe `docker compose`, la alternativa equivalente es: `docker compose up --build`.
+- Añadir el nombre del script a `.dockerignore` para **no invalidar la caché de la capa `COPY . .`** con cada cambio del script.
+
+### 20.7 Variables de entorno esenciales
+
+Siempre inyectar al contenedor de la app:
+
+| Variable | Valor | Por qué |
+|----------|-------|---------|
+| `APP_ENV` | `local`/`production` | Configura el entorno |
+| `APP_DEBUG` | `true`/`false` | **Siempre `false` en producción** |
+| `APP_URL` | `http://localhost:8080` | URL pública |
+| `APP_KEY` | generada | Sin ella no hay sesiones/cifrado |
+| `DB_CONNECTION` | `pgsql` | Driver que usa la app |
+| `DB_HOST` | nombre del contenedor BD | `localhost` NO funciona entre contenedores |
+| `DB_PORT` | `5432` | Puerto interno de Postgres |
+| `DB_DATABASE` / `DB_USERNAME` / `DB_PASSWORD` | los de la BD | Coincidir con el contenedor de BD |
+| `SESSION_DRIVER` / `CACHE_STORE` | `database` | Sin Redis ni volúmenes extra, sesiones/caché en BD |
+| `QUEUE_CONNECTION` | `sync` | Procesar colas en el momento (apps simples) |
+
+> Para **Deploy/Render** solo se inyecta `DB_URL` (la connection string del servicio) y `config/database.php` la lee con `url_parse`/`parse_url` para derivar host/port/db/user/pass; las demás variables son idénticas a la tabla.
+
+### 20.8 Verificación post-despliegue
+
+```bash
+# 1) Endpoints críticos (deben responder 200)
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/up
+
+# 2) Migraciones aplicadas (dentro del contenedor de la BD)
+docker exec app-db psql -U postgres -d app_db -tAc \
+  "SELECT 'tablas:'||count(*) FROM pg_tables WHERE schemaname='public' AND tablename<>'migrations'"
+
+# 3) Servicios vivos dentro del contenedor
+docker logs app | grep RUNNING
+
+# 4) Errores comunes y su causa
+#    - "SQLSTATE[08006] Connection refused"  → la app no encuentra la BD:
+#      revisar DB_HOST (nombre de contenedor) y que la BD esté corriendo.
+#    - "route cache / Closure not supported" → hay rutas con closures; convertirlas a controladores.
+#    - "GIN / to_tsvector" con SQLite       → la app requiere PostgreSQL real (pdo_pgsql).
+```
+
+### 20.9 Reglas de oro del despliegue Docker
+
+1. **NUNCA** commitear `.env` (los secretos van en variables de entorno del proveedor o del host).
+2. La imagen debe contener únicamente **dependencias de producción** (`--no-dev`).
+3. La base de datos SIEMPRE es un **contenedor separado**, nunca dentro del `FROM php`.
+4. `DB_HOST` = nombre del contenedor de la BD, nunca `localhost`.
+5. Las semillas demo se corren **una sola vez a mano** (`docker exec ... db:seed --force`), nunca en el entrypoint (lo haría no idempotente).
+6. El entrypoint es **idempotente** (caches + `migrate --force` corren en cada arranque sin romper).
+7. Preferir `key:generate` en el build o clave inyectada por env; nunca la misma en todos los entornos.
+8. El contenedor es desechable: si algo se rompe, `docker rm -f` y levantar de nuevo; los datos sobreviven en volúmenes.
+
+---
+
+## 21. Buenas prácticas de código: 6 reglas de calidad
+
+> **Regla obligatoria:** en automatización y desarrollo, **no basta con que un script funcione**; el código debe ser **mantenible, legible y escalable**. Estas 6 prácticas aplican a TODO el código del proyecto (backend, frontend, tests y scripts), igual que se aplican en entornos de banca donde la calidad es innegociable.
+
+### 21.1 Usa un patrón de diseño (POM / Screenplay / capas)
+
+Separa la lógica del negocio de la estructura de la UI:
+- **POM (Page Object Model):** cada pantalla/componente es una clase que encapsula sus selectores y acciones. El test solo describe el "qué", no el "cómo".
+- En Laravel aplica el mismo principio: **controladores delgados** que delegan en **Servicios** (ver sección 6 y 9), validación en **Form Requests** y consultas sopesadas en **scopes de modelo**.
+
+↳ **Resultado:** menos código repetido, más fácil de mantener y escalar.
+
+### 21.2 Escribe pruebas atómicas e independientes
+
+Cada test **debe poder ejecutarse solo**, sin depender de otros tests ni de un orden específico de ejecución:
+- Un test crea/limpia sus propios datos (usa `RefreshDatabase` + factories o seeders mínimos).
+- No asumir estados que dejó otro test.
+- Un fallo en un test **no** debe encadenar fallos en los demás.
+
+↳ **Resultado:** menos errores encadenados y mayor confiabilidad. Al ejecutar los tests con total independencia, un fallo aislado se diagnostica rápido.
+
+### 21.3 Usa aserciones claras y específicas
+
+No te conformes con validar que algo **"está"**; válida **qué exactamente** está y **por qué**:
+- Preferir aserciones concretas (`assertDatabaseHas`, `assertStatus(200)`, `assertEquals`) sobre comprobaciones vagas (`assertTrue(true)` o `assertSee` genérico sin contexto).
+- Mensajes de aserción descriptivos.
+- Nombrar los tests por su comportamiento esperado (`test_usuario_solo_ve_sus_propios_snippets`).
+
+↳ **Resultado:** diagnósticos más rápidos cuando algo falla.
+
+### 21.4 Versiona tu código y sigue una convención de commits
+
+Un buen historial de cambios te salva de más de un apuro:
+- **Commits pequeños y descriptivos**, en el idioma del proyecto (español).
+- Convención clara de prefijos cuando aporte: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`.
+- Registrar cada cambio importante en `ultimosCambios.md` con versión, fecha y archivos afectados.
+- NUNCA commitear secretos (`.env`, claves, tokens) — ver sección 13 y 14.
+
+↳ **Resultado:** mayor trazabilidad y colaboración fluida; permite `git bisect` y reverts quirúrgicos.
+
+### 21.5 Aplica el principio DRY (Don't Repeat Yourself)
+
+No repitas lógica; extrae métodos, servicios y componentes reutilizables:
+- Lógica repetida en controladores → `app/Services/`.
+- Validaciones repetidas → Form Requests reutilizables.
+- Consultas frecuentes repetidas → **scopes** en el modelo.
+- Selectores/locators repetidos en automatización → **POM** (ver 21.1).
+- CSS/blade repetido → componentes Blade y variables CSS del layout base.
+
+> **Regla de oro:** si el mismo fragmento aparece 2+ veces, es candidato a ser extraído. La duplicación es la fuente más común de errores silenciosos.
+
+↳ **Resultado:** código más limpio y con menos errores.
+
+### 21.6 Integra en pipelines de CI/CD
+
+Automatiza la ejecución de tus pruebas y revisiones en cada despliegue:
+- Cada push/PR debe ejecutar al menos: **lint/typecheck** (si aplica), **tests** (PHPUnit/Pest) y **build** de la imagen Docker.
+- En este proyecto el despliegue Docker está definido (sección 20); el CI/CD puede construirse con GitHub Actions: `composer install`, `php artisan test`, `docker build`.
+- Mantener versionado el pipeline (`.github/workflows/*.yml`).
+
+↳ **Resultado:** detección temprana de defectos y mayor confianza en cada entrega.

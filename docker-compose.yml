@@ -6,8 +6,10 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_URL: http://localhost:8080
+      APP_URL: http://localhost:8001
       APP_KEY: ${APP_KEY:-base64:Y2hhbmdlLW1lLXBsZWFzZSEhISEhIQo=}
+      WEB_SERVER: serve
+      APP_PORT: "8001"
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
@@ -19,7 +21,7 @@ services:
       QUEUE_CONNECTION: sync
       THISCODEWORKS_ENABLED: "false"
     ports:
-      - "8080:80"
+      - "8001:8001"
     volumes:
       - ./storage:/var/www/html/storage
     depends_on:
