@@ -29,7 +29,9 @@ class LanguagesTableSeeder extends Seeder
             DB::table('languages')->updateOrInsert(
                 ['name' => $lang['name']],
                 [
+                    'slug' => \Illuminate\Support\Str::slug($lang['name']),
                     'color' => $lang['color'],
+                    'is_active' => true,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]

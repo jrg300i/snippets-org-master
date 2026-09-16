@@ -11,40 +11,40 @@ class UserTableSeeder extends Seeder
 {
     public function run()
     {
-        // Usuario administrador
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Administrador',
                 'password' => Hash::make('password123'),
                 'email_verified_at' => now(),
+                'role' => 'admin',
             ]
         );
 
-        // Usuario desarrollador
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'developer@example.com'],
             [
                 'name' => 'Desarrollador',
                 'password' => Hash::make('password123'),
                 'email_verified_at' => now(),
+                'role' => 'user',
             ]
         );
 
-        // Usuario tester
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'tester@example.com'],
             [
                 'name' => 'Tester',
                 'password' => Hash::make('password123'),
                 'email_verified_at' => now(),
+                'role' => 'user',
             ]
         );
 
         $this->command->info('✅ Users table seeded successfully!');
         $this->command->info('📧 Usuarios creados:');
-        $this->command->info('   - admin@example.com / password123');
-        $this->command->info('   - developer@example.com / password123'); 
+        $this->command->info('   - admin@example.com / password123 (admin)');
+        $this->command->info('   - developer@example.com / password123');
         $this->command->info('   - tester@example.com / password123');
     }
 }

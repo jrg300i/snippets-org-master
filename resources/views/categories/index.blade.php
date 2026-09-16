@@ -14,7 +14,7 @@
                         <a href="{{ route('categories.create') }}" class="btn btn-light btn-sm">
                             <i class="fas fa-plus me-1"></i>Nueva Categoría
                         </a>
-                        <a href="{{ route('home') }}" class="btn btn-light btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                      </a>
                     </div>
@@ -24,6 +24,20 @@
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if(session('info'))
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     @endif
@@ -55,6 +69,12 @@
                                             <td>
                                                 <i class="fas fa-folder text-warning me-2"></i>
                                                 <strong>{{ $category->name }}</strong>
+                                                @if ($category->snippets_count > 0 && $category->published_snippets_count > 0)
+                                                    <span class="badge text-bg-{{ $category->published_snippets_count >= $category->snippets_count ? 'success' : 'warning' }} ms-1"
+                                                          title="Snippets publicados en thiscodeworks">
+                                                        <i class="fab fa-connectdevelop me-1"></i>{{ $category->published_snippets_count }}/{{ $category->snippets_count }} publicados
+                                                    </span>
+                                                @endif
                                             </td>
                                             <td>
                                                 @if($category->description)
@@ -76,24 +96,35 @@
                                                 </small>
                                             </td>
                                             <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="{{ route('categories.show', $category) }}" 
-                                                       class="btn btn-outline-info" 
-                                                       title="Ver">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('categories.edit', $category) }}" 
-                                                       class="btn btn-outline-primary" 
-                                                       title="Editar">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <button type="button" 
-                                                            class="btn btn-outline-danger" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#deleteModal{{ $category->id }}"
-                                                            title="Eliminar">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{{ route('categories.show', $category) }}" 
+                                                           class="btn btn-outline-info" 
+                                                           title="Ver">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('categories.edit', $category) }}" 
+                                                           class="btn btn-outline-primary" 
+                                                           title="Editar">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <button type="button" 
+                                                                class="btn btn-outline-danger" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#deleteModal{{ $category->id }}"
+                                                                title="Eliminar">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                    @if ($thiscodeworksEnabled && $category->snippets_count > 0 && $category->published_snippets_count < $category->snippets_count)
+                                                        <form action="{{ route('categories.publish', $category) }}" method="POST" class="m-0">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm btn-outline-success"
+                                                                    title="Publicar los snippets pendientes de esta colección en thiscodeworks">
+                                                                <i class="fab fa-connectdevelop"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
                                                 </div>
 
                                                 <!-- Modal de Confirmación -->

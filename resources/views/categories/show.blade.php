@@ -11,13 +11,34 @@
                         <h4 class="mb-0">
                             <i class="fas fa-folder me-2"></i>Detalles de la Categoría
                         </h4>
-                        <a href="{{ route('categories.index') }}" class="btn btn-light btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
                 </div>
 
                 <div class="card-body p-4">
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('info'))
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
                     <div class="row">
                         <div class="col-12">
                             <div class="mb-4">
@@ -50,6 +71,35 @@
                                 </p>
                             </div>
 
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-muted">Publicación en thiscodeworks</label>
+                                @if ($category->snippets_count === 0)
+                                    <p class="mb-0"><span class="text-muted">Esta colección no tiene snippets para publicar.</span></p>
+                                @elseif ($category->published_snippets_count >= $category->snippets_count)
+                                    <p class="mb-0">
+                                        <span class="badge text-bg-success">
+                                            <i class="fab fa-connectdevelop me-1"></i>Los {{ $category->snippets_count }} snippets están publicados
+                                        </span>
+                                    </p>
+                                @elseif ($thiscodeworksEnabled)
+                                    <form action="{{ route('categories.publish', $category) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-success">
+                                            <i class="fab fa-connectdevelop me-1"></i>
+                                            {{ $category->published_snippets_count > 0
+                                                ? 'Publicar los snippets restantes (' . ($category->snippets_count - $category->published_snippets_count) . ')'
+                                                : 'Publicar los ' . $category->snippets_count . ' snippets de esta colección' }}
+                                        </button>
+                                    </form>
+                                    <small class="d-block text-muted mt-1">
+                                        Publica cada snippet en thiscodeworks.com; los ya publicados se reutilizan.
+                                        La API no crea páginas de colección.
+                                    </small>
+                                @else
+                                    <p class="mb-0"><span class="text-muted">Integración con thiscodeworks deshabilitada.</span></p>
+                                @endif
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold text-muted">Fecha de Creación</label>
@@ -66,7 +116,7 @@
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="d-flex gap-2 justify-content-end">
-                                <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">
+                                <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                     <i class="fas fa-arrow-left me-1"></i>Volver al Listado
                                 </a>
                                 <a href="{{ route('categories.edit', $category) }}" class="btn btn-warning text-dark">

@@ -11,8 +11,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserTableSeeder::class,
             CategoriesTableSeeder::class,
-            LanguagesTableSeeder::class,    // ← Agregar este seeder
-            // otros seeders...
+            LanguagesTableSeeder::class,
+            SnippetsTableSeeder::class,
+            AuditoriasTableSeeder::class,
         ]);
     }
 }

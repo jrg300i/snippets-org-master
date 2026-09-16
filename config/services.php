@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'thiscodeworks' => [
+        'enabled' => env('THISCODEWORKS_ENABLED', false),
+        'api_key' => env('THISCODEWORKS_API_KEY'),
+        'api_url' => env('THISCODEWORKS_API_URL', 'https://api.thiscodeworks.com'),
+        'base_url' => env('THISCODEWORKS_BASE_URL', 'https://www.thiscodeworks.com'),
+    ],
+
 ];

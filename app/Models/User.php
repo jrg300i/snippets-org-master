@@ -16,30 +16,37 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'thiscodeworks_api_key',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'thiscodeworks_api_key',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
 
-    /**
-     * Get the snippets for the user.
-     */
     public function snippets()
     {
         return $this->hasMany(Snippet::class);
     }
 
-    /**
-     * Get the user's most recent snippets.
-     */
     public function recentSnippets()
     {
         return $this->hasMany(Snippet::class)->latest()->limit(5);
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
     }
 }

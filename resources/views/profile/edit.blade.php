@@ -205,6 +205,91 @@
                         </div>
                     </div>
 
+                    <!-- Integración thiscodeworks -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0 text-primary">
+                                        <i class="fas fa-plug me-2"></i>Integración thiscodeworks
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    @if ($thiscodeworksEnabled)
+                                        <p class="text-muted">
+                                            La integración está habilitada. Tus snippets y colecciones se publican usando tu propia API key.
+                                        </p>
+                                    @else
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            La integración está deshabilitada en el servidor (envío desactivado). Puedes guardar tu API key igualmente para cuando se habilite.
+                                        </div>
+                                    @endif
+
+                                    @php($maskedKey = $effectiveApiKey ? str_repeat('•', 8) . substr($effectiveApiKey, -4) : null)
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">API Key en uso</label>
+                                        <div class="input-group">
+                                            <input type="text"
+                                                   class="form-control"
+                                                   id="effectiveApiKey"
+                                                   value="{{ $maskedKey ?: 'No hay API key configurada' }}"
+                                                   readonly>
+                                            @if ($user->thiscodeworks_api_key)
+                                                <button class="btn btn-outline-secondary reveal-key" type="button">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+                                        <div class="form-text">
+                                            @if ($user->thiscodeworks_api_key)
+                                                Es tu clave personal.
+                                            @else
+                                                Es la clave global del servidor (aún no definiste una personal).
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('profile.api-key.update') }}" id="apiKeyForm">
+                                        @csrf
+
+                                        <div class="mb-3">
+                                            <label for="thiscodeworks_api_key" class="form-label fw-semibold">API Key de thiscodeworks</label>
+                                            <div class="input-group">
+                                                <input type="password"
+                                                       class="form-control @error('thiscodeworks_api_key') is-invalid @enderror"
+                                                       id="thiscodeworks_api_key"
+                                                       name="thiscodeworks_api_key"
+                                                       placeholder="{{ $user->thiscodeworks_api_key ? 'Clave guardada — escribe una nueva para cambiarla' : 'Escribe tu API key (opcional)' }}"
+                                                       autocomplete="off">
+                                                <button class="btn btn-outline-secondary toggle-password" type="button" data-target="thiscodeworks_api_key">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                @error('thiscodeworks_api_key')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="form-text">
+                                                @if ($user->thiscodeworks_api_key)
+                                                    Usas tu clave personal. Déjala en blanco para mantenerla.
+                                                @else
+                                                    No tienes clave personal definida: se usa la clave global del servidor.
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-primary" id="submitApiKey">
+                                                <i class="fas fa-key me-1"></i>Guardar API Key
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Respaldo de Datos -->
                     <div class="row">
                         <div class="col-12">
@@ -310,7 +395,7 @@
 
                     <!-- Botón Volver -->
                     <div class="d-flex justify-content-start mt-4">
-                        <a href="{{ route('home') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
                         </a>
                     </div>
@@ -324,6 +409,27 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar/ocultar la API key efectiva en uso
+    const effectiveInput = document.getElementById('effectiveApiKey');
+    const revealBtn = document.querySelector('.reveal-key');
+
+    if (effectiveInput && revealBtn) {
+        const masked = effectiveInput.value;
+        const full = @json($user->thiscodeworks_api_key ?? '');
+        revealBtn.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (effectiveInput.value !== full) {
+                effectiveInput.value = full;
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                effectiveInput.value = masked;
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    }
+
     // Toggle para mostrar/ocultar contraseña
     document.querySelectorAll('.toggle-password').forEach(button => {
         button.addEventListener('click', function() {

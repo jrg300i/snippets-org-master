@@ -13,7 +13,7 @@
                         <a href="{{ route('languages.create') }}" class="btn btn-light btn-sm">
                             <i class="fas fa-plus me-1"></i>Nuevo Lenguaje
                         </a>
-                         <a href="{{ route('home') }}" class="btn btn-light btn-sm">
+                         <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>

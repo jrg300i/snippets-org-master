@@ -10,7 +10,7 @@
                         <h4 class="mb-0">
                             <i class="fas fa-edit me-2"></i>Editar Snippet
                         </h4>
-                        <a href="{{ route('snippets.index') }}" class="btn btn-dark btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-dark btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
@@ -156,13 +156,12 @@
                                     <label for="language_id" class="form-label fw-semibold">
                                         <i class="fas fa-language me-1 text-warning"></i>Lenguaje de Programación
                                     </label>
-                                    <select class="form-select @error('language_id') is-invalid @enderror" 
-                                            id="language_id" 
-                                            name="language_id" 
-                                            required>
-                                        <option value="">Selecciona un lenguaje</option>
+<select class="form-select @error('language_id') is-invalid @enderror"
+                                            id="language_id"
+                                            name="language_id">
+                                        <option value="">Sin lenguaje</option>
                                         @foreach($languages as $language)
-                                            <option value="{{ $language->id }}" 
+                                            <option value="{{ $language->id }}"
                                                 data-slug="{{ $language->slug }}"
                                                 {{ old('language_id', $snippet->language_id) == $language->id ? 'selected' : '' }}
                                                 {{ !$language->is_active ? 'disabled' : '' }}>
@@ -176,7 +175,24 @@
                                     @error('language_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <div class="form-text">Selecciona el lenguaje para resaltado de sintaxis.</div>
+                                    <div class="form-text">Opcional. Selecciona el lenguaje para resaltado de sintaxis.</div>
+                                </div>
+
+                                <!-- Etiquetas -->
+                                <div class="mb-4">
+                                    <label for="tags" class="form-label fw-semibold">
+                                        <i class="fas fa-tags me-1 text-warning"></i>Etiquetas
+                                    </label>
+                                    <input type="text"
+                                           class="form-control @error('tags') is-invalid @enderror"
+                                           id="tags"
+                                           name="tags"
+                                           value="{{ old('tags', implode(', ', $snippet->tags ?? [])) }}"
+                                           placeholder="php, laravel, backup">
+                                    @error('tags')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-text">Separa las etiquetas con comas (opcional).</div>
                                 </div>
 
                                 <!-- Vista Previa del Lenguaje -->
@@ -216,7 +232,7 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex gap-2 justify-content-end">
-                                    <a href="{{ route('snippets.show', $snippet->id) }}" class="btn btn-outline-secondary">
+                                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i>Cancelar
                                     </a>
                                     <button type="submit" class="btn btn-warning" id="submitBtn">
@@ -353,11 +369,43 @@ document.addEventListener('DOMContentLoaded', function() {
             codeTextarea.focus();
             return;
         }
-        
+
+        // Serializar etiquetas como tags[]
+        document.querySelectorAll('input[name="tags[]"]').forEach(el => el.remove());
+        String(document.getElementById('tags').value || '')
+            .split(',')
+            .map(t => t.trim())
+            .filter(t => t !== '')
+            .forEach(tag => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'tags[]';
+                input.value = tag;
+                form.appendChild(input);
+            });
+
         // Mostrar loading
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Actualizando...';
         submitBtn.disabled = true;
     });
+
+    // Validación con jQuery Validate (global)
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#snippetForm').validate({
+            rules: {
+                title: 'required',
+                code: 'required',
+                category_id: 'required'
+            },
+            messages: {
+                title: 'El título es obligatorio.',
+                code: 'El código es obligatorio.',
+                category_id: 'Debes seleccionar una categoría.'
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback'
+        });
+    }
 
     // Actualizar vista previa del lenguaje
     languageSelect.addEventListener('change', function() {

@@ -10,7 +10,7 @@
                         <h4 class="mb-0">
                             <i class="fas fa-language me-2"></i>{{ $language->name }}
                         </h4>
-                        <a href="{{ route('languages.index') }}" class="btn btn-light btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
@@ -96,7 +96,7 @@
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <a href="{{ route('languages.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                             <i class="fas fa-list me-1"></i>Ver Todos los Lenguajes
                         </a>
                         <div>

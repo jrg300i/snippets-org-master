@@ -9,29 +9,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('languages', function (Blueprint $table) {
+            // I - ID (siempre primero)
             $table->id();
+
+            // P - Personal / Datos de negocio
             $table->string('name', 100)->unique();
             $table->string('slug', 50)->unique();
             $table->string('color', 7)->default('#6c757d');
             $table->string('description')->nullable();
             $table->boolean('is_active')->default(true);
+
+            // R - Relaciones (No aplica en esta tabla)
+
+            // A - Auth (No aplica)
+
+            // T - Timestamps / Fechas
             $table->timestamps();
         });
-
-         if (!Schema::hasColumn('languages', 'color')) {
-            Schema::table('languages', function (Blueprint $table) {
-                $table->string('color')->default('#6c757d')->after('name');
-            });
-        }
     }
 
     public function down(): void
     {
-         if (Schema::hasColumn('languages', 'color')) {
-            Schema::table('languages', function (Blueprint $table) {
-                $table->dropColumn('color');
-            });
-        }
         Schema::dropIfExists('languages');
     }
 };

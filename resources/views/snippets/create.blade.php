@@ -10,7 +10,7 @@
                         <h4 class="mb-0">
                             <i class="fas fa-plus-circle me-2"></i>Crear Nuevo Snippet
                         </h4>
-                        <a href="{{ route('snippets.index') }}" class="btn btn-light btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
@@ -27,7 +27,7 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('snippets.store') }}" method="POST">
+                    <form action="{{ route('snippets.store') }}" method="POST" id="createSnippetForm">
                         @csrf
 
                         <div class="row">
@@ -66,6 +66,21 @@
                                     @enderror
                                     <div class="form-text">Usa tabulaciones y saltos de línea para mantener el formato.</div>
                                 </div>
+
+                                <!-- Descripción -->
+                                <div class="mb-4">
+                                    <label for="description" class="form-label fw-semibold">
+                                        <i class="fas fa-align-left me-1 text-primary"></i>Descripción
+                                    </label>
+                                    <textarea class="form-control @error('description') is-invalid @enderror"
+                                              id="description"
+                                              name="description"
+                                              rows="3"
+                                              placeholder="Explica brevemente para qué sirve este snippet (opcional)...">{{ old('description') }}</textarea>
+                                    @error('description')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
                             </div>
 
                             <div class="col-md-4">
@@ -74,11 +89,10 @@
                                     <label for="language_id" class="form-label fw-semibold">
                                         <i class="fas fa-language me-1 text-primary"></i>Lenguaje de Programación
                                     </label>
-                                    <select class="form-select @error('language_id') is-invalid @enderror" 
-                                            id="language_id" 
-                                            name="language_id" 
-                                            required>
-                                        <option value="">Selecciona un lenguaje</option>
+<select class="form-select @error('language_id') is-invalid @enderror"
+                                            id="language_id"
+                                            name="language_id">
+                                        <option value="">Sin lenguaje</option>
                                         @foreach($languages as $language)
                                             <option value="{{ $language->id }}" {{ old('language_id') == $language->id ? 'selected' : '' }}>
                                                 {{ $language->name }}
@@ -89,9 +103,7 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                     <div class="form-text">
-                                        <a href="{{ route('languages.create') }}" class="text-decoration-none">
-                                            <i class="fas fa-plus-circle me-1"></i>Crear nuevo lenguaje
-                                        </a>
+                                        Opcional. Asigna un lenguaje para el resaltado de sintaxis.
                                     </div>
                                 </div>
 
@@ -121,6 +133,44 @@
                                     </div>
                                 </div>
 
+                                <!-- Etiquetas -->
+                                <div class="mb-4">
+                                    <label for="tags" class="form-label fw-semibold">
+                                        <i class="fas fa-tags me-1 text-primary"></i>Etiquetas
+                                    </label>
+                                    <input type="text"
+                                           class="form-control @error('tags') is-invalid @enderror"
+                                           id="tags"
+                                           name="tags"
+                                           value="{{ old('tags') }}"
+                                           placeholder="php, laravel, backup"
+                                           data-separator=",">
+                                    @error('tags')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-text">Separa las etiquetas con comas (opcional).</div>
+                                </div>
+
+                                <!-- Publicar en thiscodeworks -->
+                                <div class="mb-4">
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="publish_to_api" value="0">
+                                        <input class="form-check-input @error('publish_to_api') is-invalid @enderror"
+                                               type="checkbox"
+                                               id="publish_to_api"
+                                               name="publish_to_api"
+                                               value="1"
+                                               {{ old('publish_to_api', 1) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold" for="publish_to_api">
+                                            <i class="fas fa-share-alt me-1 text-primary"></i>Publicar en thiscodeworks
+                                        </label>
+                                    </div>
+                                    @error('publish_to_api')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-text">Se sube a thiscodeworks.com al crear (la API no actualiza ediciones).</div>
+                                </div>
+
                                 <!-- Vista previa -->
                                 <div class="mb-4">
                                     <label class="form-label fw-semibold">
@@ -137,7 +187,7 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex gap-2 justify-content-end">
-                                    <a href="{{ route('snippets.index') }}" class="btn btn-outline-secondary">
+                                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i>Cancelar
                                     </a>
                                     <button type="submit" class="btn btn-primary">
@@ -155,11 +205,35 @@
 
 @push('scripts')
 <script>
+    function parseTags() {
+        return String(document.getElementById('tags')?.value || '')
+            .split(',')
+            .map(t => t.trim())
+            .filter(t => t !== '');
+    }
+
+    // Serializar etiquetas antes de enviar
+    const snippetForm = document.querySelector('form[action$="/snippets"]');
+    if (snippetForm) {
+        snippetForm.addEventListener('submit', function () {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'tags[]';
+            parseTags().forEach(tag => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'tags[]';
+                input.value = tag;
+                snippetForm.appendChild(input);
+            });
+        });
+    }
+
     // Actualizar vista previa en tiempo real
     document.getElementById('code').addEventListener('input', function() {
         const languageSelect = document.getElementById('language_id');
         const selectedLanguage = languageSelect.value ? languageSelect.options[languageSelect.selectedIndex].text.toLowerCase() : 'plaintext';
-        
+
         document.querySelector('.snippet-code code').textContent = this.value;
         document.querySelector('.snippet-code code').className = 'language-' + selectedLanguage;
         hljs.highlightElement(document.querySelector('.snippet-code code'));
@@ -172,7 +246,24 @@
         hljs.highlightElement(codeElement);
     });
 
-    // Inicializar highlight.js al cargar la página
+    // Validación con jQuery Validate (global)
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#createSnippetForm').validate({
+            rules: {
+                title: 'required',
+                code: 'required',
+                category_id: 'required'
+            },
+            messages: {
+                title: 'El título es obligatorio.',
+                code: 'El código es obligatorio.',
+                category_id: 'Debes seleccionar una categoría.'
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback'
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         hljs.highlightAll();
     });

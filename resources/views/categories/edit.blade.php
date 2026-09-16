@@ -11,14 +11,14 @@
                         <h4 class="mb-0">
                             <i class="fas fa-edit me-2"></i>Editar Categoría
                         </h4>
-                        <a href="{{ route('categories.index') }}" class="btn btn-dark btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-dark btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
                 </div>
 
                 <div class="card-body p-4">
-                    <form action="{{ route('categories.update', $category) }}" method="POST">
+                    <form action="{{ route('categories.update', $category) }}" method="POST" id="editCategoryForm">
                         @csrf
                         @method('PUT')
 
@@ -73,7 +73,7 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex gap-2 justify-content-end">
-                                    <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">
+                                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i>Cancelar
                                     </a>
                                     <button type="submit" class="btn btn-warning text-dark">
@@ -89,3 +89,24 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#editCategoryForm').validate({
+            rules: {
+                name: 'required',
+                description: { maxlength: 255 },
+                proposito: { maxlength: 255 }
+            },
+            messages: {
+                name: 'El nombre es obligatorio.',
+                description: { maxlength: 'Máximo 255 caracteres.' },
+                proposito: { maxlength: 'Máximo 255 caracteres.' }
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback'
+        });
+    }
+</script>
+@endpush

@@ -10,7 +10,13 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','description','proposito'];
+    protected $fillable = [
+        'name',
+        'description',
+        'proposito',
+        'thiscodeworks_id',
+        'thiscodeworks_url',
+    ];
 
 protected $casts = [
         'created_at' => 'datetime',
@@ -24,5 +30,13 @@ protected $casts = [
     public function snippets(): HasMany
     {
         return $this->hasMany(Snippet::class);
+    }
+
+    /**
+     * Snippets de la categoría ya publicados en thiscodeworks.com.
+     */
+    public function publishedSnippets(): HasMany
+    {
+        return $this->hasMany(Snippet::class)->whereNotNull('thiscodeworks_id');
     }
 }

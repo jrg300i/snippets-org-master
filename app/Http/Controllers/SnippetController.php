@@ -2,138 +2,188 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Snippet;
+use App\Http\Requests\StoreSnippetRequest;
+use App\Http\Requests\UpdateSnippetRequest;
 use App\Models\Category;
 use App\Models\Language;
-use Illuminate\Http\Request;
+use App\Models\Snippet;
+use App\Services\AuditoriaService;
+use App\Services\ThisCodeWorksService;
 
 class SnippetController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct(
+        private readonly AuditoriaService $auditoria,
+        private readonly ThisCodeWorksService $thiscodeworks,
+    ) {
+    }
+
     public function index()
     {
-        // Solo snippets del usuario autenticado
         $snippets = Snippet::with(['category', 'language', 'user'])
             ->where('user_id', auth()->id())
             ->latest()
             ->get();
 
-        // Filtrar snippets con y sin lenguaje
-        $snippetsWithLanguage = $snippets->filter(function($snippet) {
-            return $snippet->language !== null;
-        });
-        
-        $snippetsWithoutLanguage = $snippets->filter(function($snippet) {
-            return $snippet->language === null;
-        });
+        $categories = Category::orderBy('name')->get();
+        $languages = Language::active()->orderBy('name')->get();
+        $thiscodeworksEnabled = $this->thiscodeworks->enabled();
 
-        return view('snippets.index', compact(
-            'snippets', 
-            'snippetsWithLanguage', 
-            'snippetsWithoutLanguage'
-        ));
+        return view('snippets.index', compact('snippets', 'categories', 'languages', 'thiscodeworksEnabled'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        $categories = Category::all();
-        $languages = Language::active()->get();
-        
+        $categories = Category::orderBy('name')->get();
+        $languages = Language::active()->orderBy('name')->get();
+
         return view('snippets.create', compact('categories', 'languages'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreSnippetRequest $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'code' => 'required|string',
-            'category_id' => 'required|exists:categories,id',
-            'language_id' => 'required|exists:languages,id',
-            'description' => 'nullable|string'
-        ]);
-
-        // Agregar el user_id automáticamente
+        $validated = $request->validated();
         $validated['user_id'] = auth()->id();
+        $publishToApi = $request->boolean('publish_to_api', true);
+        unset($validated['publish_to_api']);
 
-        Snippet::create($validated);
+        $snippet = Snippet::create($validated);
 
-        return redirect()->route('snippets.index')
-            ->with('success', 'Snippet creado exitosamente.');
+        $this->auditoria->registrar(
+            'crear',
+            'snippet',
+            $snippet->id,
+            "Snippet «{$snippet->title}» creado.",
+            null,
+            $snippet->toArray(),
+        );
+
+        $message = 'Snippet creado exitosamente.';
+
+        if ($this->thiscodeworks->enabled() && $publishToApi) {
+            $published = $this->thiscodeworks->publish($snippet);
+
+            if ($published) {
+                $this->auditoria->registrar(
+                    'publicar',
+                    'snippet',
+                    $snippet->id,
+                    'Snippet publicado en thiscodeworks.com.',
+                    null,
+                    [
+                        'thiscodeworks_id' => $snippet->thiscodeworks_id,
+                        'thiscodeworks_url' => $snippet->thiscodeworks_url,
+                    ],
+                );
+                $message .= ' Publicado en thiscodeworks.com.';
+            } else {
+                $message .= ' No se pudo publicar en thiscodeworks.com.';
+            }
+        }
+
+        return redirect()->route('snippets.index')->with('success', $message);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Snippet $snippet)
     {
-        // Verificar que el snippet pertenezca al usuario
         $this->authorizeSnippet($snippet);
 
         $snippet->load(['category', 'language', 'user']);
-        return view('snippets.show', compact('snippet'));
+
+        return view('snippets.show', [
+            'snippet' => $snippet,
+            'thiscodeworksEnabled' => $this->thiscodeworks->enabled(),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Snippet $snippet)
     {
-        // Verificar que el snippet pertenezca al usuario
         $this->authorizeSnippet($snippet);
 
-        $categories = Category::all();
-        $languages = Language::active()->get();
+        $categories = Category::orderBy('name')->get();
+        $languages = Language::active()->orderBy('name')->get();
 
         return view('snippets.edit', compact('snippet', 'categories', 'languages'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Snippet $snippet)
+    public function update(UpdateSnippetRequest $request, Snippet $snippet)
     {
-        // Verificar que el snippet pertenezca al usuario
         $this->authorizeSnippet($snippet);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'code' => 'required|string',
-            'category_id' => 'required|exists:categories,id',
-            'language_id' => 'required|exists:languages,id',
-            'description' => 'nullable|string'
-        ]);
+        $antes = $snippet->toArray();
 
-        $snippet->update($validated);
+        $snippet->update($request->validated());
+
+        $this->auditoria->registrar(
+            'actualizar',
+            'snippet',
+            $snippet->id,
+            "Snippet «{$snippet->title}» actualizado.",
+            $antes,
+            $snippet->toArray(),
+        );
 
         return redirect()->route('snippets.index')
             ->with('success', 'Snippet actualizado exitosamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Snippet $snippet)
     {
-        // Verificar que el snippet pertenezca al usuario
         $this->authorizeSnippet($snippet);
 
+        $title = $snippet->title;
+        $antes = $snippet->toArray();
+
         $snippet->delete();
+
+        $this->auditoria->registrar(
+            'eliminar',
+            'snippet',
+            $snippet->id,
+            "Snippet «{$title}» eliminado.",
+            $antes,
+            null,
+        );
 
         return redirect()->route('snippets.index')
             ->with('success', 'Snippet eliminado exitosamente.');
     }
 
-    /**
-     * Autorizar el acceso al snippet
-     */
+    public function publish(Snippet $snippet)
+    {
+        $this->authorizeSnippet($snippet);
+
+        if (!$this->thiscodeworks->enabled()) {
+            return redirect()->back()
+                ->with('error', 'La integración con thiscodeworks está deshabilitada.');
+        }
+
+        if ($snippet->thiscodeworks_id) {
+            return redirect()->back()->with('info', 'El snippet ya está publicado en thiscodeworks.');
+        }
+
+        $published = $this->thiscodeworks->publish($snippet);
+
+        if ($published) {
+            $this->auditoria->registrar(
+                'publicar',
+                'snippet',
+                $snippet->id,
+                'Snippet publicado en thiscodeworks.com.',
+                null,
+                [
+                    'thiscodeworks_id' => $snippet->thiscodeworks_id,
+                    'thiscodeworks_url' => $snippet->thiscodeworks_url,
+                ],
+            );
+
+            return redirect()->back()->with('success', 'Snippet publicado en thiscodeworks.com.');
+        }
+
+        return redirect()->back()
+            ->with('error', 'No se pudo publicar el snippet en thiscodeworks.com.');
+    }
+
     private function authorizeSnippet(Snippet $snippet): void
     {
         if ($snippet->user_id !== auth()->id()) {

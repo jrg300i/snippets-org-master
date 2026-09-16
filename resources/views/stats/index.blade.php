@@ -14,7 +14,7 @@
                             <a href="/api/stats" class="btn btn-light btn-sm me-2" target="_blank">
                                 <i class="fas fa-code me-1"></i>Ver JSON
                             </a>
-                            <a href="{{ route('home') }}" class="btn btn-light btn-sm">
+                            <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
                             </a>
                         </div>

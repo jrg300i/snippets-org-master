@@ -1,0 +1,25 @@
+/*
+ * Paleta oficial del proyecto (reglas.md §8).
+ * Se replica como variables :root en layouts/app.blade.php.
+ * Estos estilos se usan si se compila Vite; el layout base ya incluye la paleta.
+ */
+:root {
+    --c-primary: #2563EB;
+    --c-primary-dark: #1D4ED8;
+    --c-primary-light: #3B82F6;
+    --bs-navbar-bg: linear-gradient(135deg, #1E40AF, #2563EB);
+    --bs-success: #10B981;
+    --bs-danger: #EF4444;
+    --bs-warning: #F59E0B;
+    --bs-info: #06B6D4;
+    --bs-body-bg: #F8FAFD;
+    --bs-body-color: #1E293B;
+    --bs-border-color: #E2E8F0;
+    --bs-font-sans-serif: 'DM Sans', system-ui;
+}
+
+body {
+    font-family: var(--bs-font-sans-serif);
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}

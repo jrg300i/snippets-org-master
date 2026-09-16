@@ -11,7 +11,7 @@
                             <i class="fas fa-code me-2"></i>{{ $snippet->title }}
                         </h4>
                         <div>
-                            <a href="{{ route('home') }}" class="btn btn-light btn-sm me-2">
+                            <a href="{{ url()->previous() }}" class="btn btn-light btn-sm me-2">
                                 <i class="fas fa-arrow-left me-1"></i> Volver
                             </a>
                         </div>
@@ -19,6 +19,27 @@
                 </div>
 
                 <div class="card-body">
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if (session('info'))
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
                     <!-- Información del Snippet -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -101,6 +122,19 @@
                         </div>
                     </div>
 
+                    <!-- Publicación en thiscodeworks -->
+                    @if ($snippet->thiscodeworks_url)
+                        <div class="mb-4">
+                            <div class="card bg-light border-0">
+                                <div class="card-body py-2">
+                                    <a href="{{ $snippet->thiscodeworks_url }}" target="_blank" rel="noopener" class="text-decoration-none text-success">
+                                        <i class="fab fa-connectdevelop me-2"></i>Publicado en thiscodeworks.com
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Descripción -->
                     @if($snippet->description)
                     <div class="mb-4">
@@ -176,11 +210,19 @@
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <a href="{{ route('snippets.index') }}" class="btn btn-outline-secondary">
+                                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-arrow-left me-1"></i> Volver al Listado
                                     </a>
                                 </div>
                                 <div class="btn-group">
+                                    @if ($thiscodeworksEnabled && !$snippet->thiscodeworks_id)
+                                        <form action="{{ route('snippets.publish', $snippet) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success">
+                                                <i class="fab fa-connectdevelop me-1"></i> Publicar en thiscodeworks
+                                            </button>
+                                        </form>
+                                    @endif
                                     <a href="{{ route('snippets.edit', $snippet) }}" class="btn btn-warning">
                                         <i class="fas fa-edit me-1"></i> Editar
                                     </a>
@@ -222,7 +264,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 function copyAllCode() {
     const codeElement = document.getElementById('snippet-code');
@@ -441,4 +483,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 </style>
-@endsection
+@endpush

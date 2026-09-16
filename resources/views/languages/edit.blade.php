@@ -10,14 +10,14 @@
                         <h4 class="mb-0">
                             <i class="fas fa-edit me-2"></i>Editar Lenguaje
                         </h4>
-                        <a href="{{ route('languages.index', $language->id) }}" class="btn btn-dark btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-dark btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
                 </div>
 
                 <div class="card-body p-4">
-                    <form action="{{ route('languages.update', $language->id) }}" method="POST">
+                    <form action="{{ route('languages.update', $language->id) }}" method="POST" id="editLanguageForm">
                         @csrf
                         @method('PUT')
 
@@ -63,8 +63,10 @@
                                        value="{{ old('color', $language->color) }}"
                                        required>
                                 <input type="text" 
+                                       id="colorText"
                                        class="form-control @error('color') is-invalid @enderror" 
                                        value="{{ old('color', $language->color) }}"
+                                       placeholder="#6c757d"
                                        onchange="document.getElementById('color').value = this.value">
                             </div>
                             @error('color')
@@ -141,7 +143,7 @@
                         </div>
 
                         <div class="d-flex gap-2 justify-content-end">
-                            <a href="{{ route('languages.show', $language->id) }}" class="btn btn-outline-secondary">
+                            <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-times me-1"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-warning">
@@ -172,6 +174,45 @@
             }
         });
     });
+
+    // Máscara de color hexadecimal en el campo de texto
+    if (window.jQuery && jQuery.fn.mask) {
+        $('#colorText').mask('#hhhhhh', {
+            translation: { 'h': { pattern: /[0-9a-fA-F]/ } }
+        });
+    }
+
+    // Validación con jQuery Validate (global)
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#editLanguageForm').validate({
+            rules: {
+                name: 'required',
+                slug: {
+                    required: true,
+                    pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+                },
+                color: {
+                    required: true,
+                    pattern: /^#[0-9a-fA-F]{6}$/
+                },
+                description: { maxlength: 500 }
+            },
+            messages: {
+                name: 'El nombre es obligatorio.',
+                slug: {
+                    required: 'El slug es obligatorio.',
+                    pattern: 'Solo minúsculas, números y guiones.'
+                },
+                color: {
+                    required: 'El color es obligatorio.',
+                    pattern: 'Formato hexadecimal inválido (#rrggbb).'
+                },
+                description: { maxlength: 'Máximo 500 caracteres.' }
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback'
+        });
+    }
 </script>
 @endpush
 @endsection

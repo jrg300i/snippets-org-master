@@ -12,12 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
+            // I - ID (siempre primero)
             $table->id();
+
+            // P - Personal / Datos de negocio
             $table->string('name');
+
+            // R - Relaciones (No aplica en esta tabla)
+
+            // A - Auth
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            // Rol de acceso (admin | user) para el módulo de auditoría y rutas role:admin
+            $table->string('role')->default('user');
+
+            // T - Timestamps / Fechas
             $table->timestamps();
         });
 

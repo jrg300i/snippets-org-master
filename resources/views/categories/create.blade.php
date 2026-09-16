@@ -10,14 +10,14 @@
                         <h4 class="mb-0">
                             <i class="fas fa-folder-plus me-2"></i>Crear Nueva Categoría
                         </h4>
-                        <a href="{{ route('categories.index') }}" class="btn btn-light btn-sm">
+                        <a href="{{ url()->previous() }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Volver
                         </a>
                     </div>
                 </div>
 
                 <div class="card-body p-4">
-                    <form action="{{ route('categories.store') }}" method="POST">
+                    <form action="{{ route('categories.store') }}" method="POST" id="createCategoryForm">
                         @csrf
 
                         <!-- Nombre -->
@@ -107,7 +107,7 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex gap-2 justify-content-end">
-                                    <a href="{{ route('categories.index') }}" class="btn btn-outline-secondary">
+                                    <a href="{{ url()->previous() }}" class="btn btn-outline-secondary">
                                         <i class="fas fa-times me-1"></i>Cancelar
                                     </a>
                                     <button type="submit" class="btn btn-success">
@@ -123,3 +123,24 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    if (window.jQuery && jQuery.fn.validate) {
+        $('#createCategoryForm').validate({
+            rules: {
+                name: 'required',
+                description: { maxlength: 255 },
+                proposito: { maxlength: 255 }
+            },
+            messages: {
+                name: 'El nombre es obligatorio.',
+                description: { maxlength: 'Máximo 255 caracteres.' },
+                proposito: { maxlength: 'Máximo 255 caracteres.' }
+            },
+            errorElement: 'div',
+            errorClass: 'invalid-feedback'
+        });
+    }
+</script>
+@endpush
