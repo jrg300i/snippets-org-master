@@ -19,6 +19,9 @@ COPY . .
 # 5. Config por defecto sin secretos (las env vars de Render prevalecen sobre este)
 RUN cp .env.example .env
 
+# La app usa PostgreSQL (índices GIN/jsonb). Si se corre sin BD se debe conectar a una.
+ENV DB_CONNECTION=pgsql
+
 # 6. Dependencias de producción (sin dev: sin sail, pint, pail...)
 RUN composer install --no-dev --optimize-autoloader \
     && php artisan key:generate --force
