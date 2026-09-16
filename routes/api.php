@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CategoryApiController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\SnippetApiController;
 use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
@@ -16,13 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/health', function () {
-    return response()->json([
-        'status' => 'OK',
-        'message' => 'Snippet Organizer API is running',
-        'timestamp' => now()->toDateTimeString(),
-    ]);
-});
+Route::get('/health', HealthController::class);
 
 // Snippets API Routes
 Route::get('/snippets', [SnippetApiController::class, 'index']);
