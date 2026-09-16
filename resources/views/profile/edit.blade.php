@@ -226,28 +226,22 @@
                                         </div>
                                     @endif
 
-                                    @php($maskedKey = $effectiveApiKey ? str_repeat('•', 8) . substr($effectiveApiKey, -4) : null)
+                                    @php($maskedKey = $effectiveApiKey ? '••••••••••••••••' : null)
 
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">API Key en uso</label>
                                         <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
                                             <input type="text"
-                                                   class="form-control"
+                                                   class="form-control bg-secondary bg-opacity-10 text-secondary"
                                                    id="effectiveApiKey"
                                                    value="{{ $maskedKey ?: 'No hay API key configurada' }}"
-                                                   readonly>
-                                            @if ($user->thiscodeworks_api_key)
-                                                <button class="btn btn-outline-secondary reveal-key" type="button">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                            @endif
+                                                   disabled
+                                                   tabindex="-1"
+                                                   aria-disabled="true">
                                         </div>
                                         <div class="form-text">
-                                            @if ($user->thiscodeworks_api_key)
-                                                Es tu clave personal.
-                                            @else
-                                                Es la clave global del servidor (aún no definiste una personal).
-                                            @endif
+                                            La clave está oculta por seguridad y no se puede revelar ni copiar. Para cambiarla, guarda una nueva en el campo de abajo.
                                         </div>
                                     </div>
 
@@ -409,27 +403,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Mostrar/ocultar la API key efectiva en uso
-    const effectiveInput = document.getElementById('effectiveApiKey');
-    const revealBtn = document.querySelector('.reveal-key');
-
-    if (effectiveInput && revealBtn) {
-        const masked = effectiveInput.value;
-        const full = @json($user->thiscodeworks_api_key ?? '');
-        revealBtn.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            if (effectiveInput.value !== full) {
-                effectiveInput.value = full;
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                effectiveInput.value = masked;
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        });
-    }
-
     // Toggle para mostrar/ocultar contraseña
     document.querySelectorAll('.toggle-password').forEach(button => {
         button.addEventListener('click', function() {

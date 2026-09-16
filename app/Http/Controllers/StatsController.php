@@ -3,34 +3,41 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Category;
+use App\Models\Language;
+use App\Models\Snippet;
 
 class StatsController extends Controller
 {
     public function index()
     {
         try {
-            // Obtener datos para la vista
-            $totalSnippets = \App\Models\Snippet::count();
-            $totalCategories = \App\Models\Category::count();
-            $totalLanguages = \App\Models\Language::count();
-            
-            $popularLanguages = \App\Models\Language::withCount('snippets')
+            $userId = auth()->id();
+            $countByUser = fn ($query) => $query->where('user_id', $userId);
+
+            // Obtener datos para la vista (solo del usuario autenticado)
+            $totalSnippets = Snippet::forCurrentUser()->count();
+            $totalCategories = Category::count();
+            $totalLanguages = Language::count();
+
+            $popularLanguages = Language::withCount(['snippets' => $countByUser])
                 ->orderBy('snippets_count', 'desc')
                 ->take(10)
                 ->get();
 
-            $popularCategories = \App\Models\Category::withCount('snippets')
+            $popularCategories = Category::withCount(['snippets' => $countByUser])
                 ->orderBy('snippets_count', 'desc')
                 ->take(10)
                 ->get();
 
-            $recentSnippets = \App\Models\Snippet::with(['category', 'language'])
+            $recentSnippets = Snippet::with(['category', 'language'])
+                ->forCurrentUser()
                 ->latest()
                 ->take(10)
                 ->get();
 
-            $languageDistribution = \App\Models\Language::withCount('snippets')->get();
-            $categoryDistribution = \App\Models\Category::withCount('snippets')->get();
+            $languageDistribution = Language::withCount(['snippets' => $countByUser])->get();
+            $categoryDistribution = Category::withCount(['snippets' => $countByUser])->get();
 
             return view('stats.index', compact(
                 'totalSnippets',
